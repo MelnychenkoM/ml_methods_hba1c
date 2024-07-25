@@ -3,6 +3,7 @@ import numpy as np
 from boxsers.preprocessing import rubberband_baseline_cor
 from scipy.signal import savgol_filter
 
+
 class DatasetSpectra:
     def __init__(self, file_path, domain_path, target='hba1c'):
         self.data = pd.read_csv(file_path)
@@ -10,6 +11,7 @@ class DatasetSpectra:
         self.n_samples = self.spectra.shape[0]
         self.n_features = self.spectra.shape[1]
         self.wavenumbers = pd.read_csv(domain_path).to_numpy().reshape(-1)
+
         if target == 'hba1c':
             self.target = self.data.iloc[:, -2].to_numpy()
         elif target == 'age':
@@ -52,14 +54,14 @@ class DatasetSpectra:
     def savgol_filter(self, **kwargs):
         self.spectra = np.apply_along_axis(lambda row: savgol_filter(row, **kwargs).squeeze(), 1, self.spectra)
     
-    def get_targets(self):
-        return self.target
-    
     def select_region(self, start, end):
         mask = (self.wavenumbers >= start) & (self.wavenumbers <= end)
         self.spectra = self.spectra[:, mask]
         self.wavenumbers = self.wavenumbers[mask]
         return None
+    
+    def get_targets(self):
+        return self.target
     
     def get_spectra(self):
         return self.spectra

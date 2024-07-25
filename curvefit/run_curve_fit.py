@@ -54,7 +54,7 @@ def main(data_path, domain_path, peaks_path, output_dir, fit_sample):
             model.params.to_csv(output_path)
 
             with open(metadata_path, 'a') as metadata_file:
-                metadata_file.write(f"{i} r2: {model.r2:.3f} dis: {model.discrepancy:.3e}\n")
+                metadata_file.write(f"{i} r2: {model.r2:.3f} dis: {model.discrepancy:.3e} target: {target}\n")
 
             pbar.update(1)
 
