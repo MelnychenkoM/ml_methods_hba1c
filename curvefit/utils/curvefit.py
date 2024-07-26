@@ -211,7 +211,7 @@ class SpectraFit:
         """
         Plot resulting fit/residuals
         """
-        if self.params:
+        if isinstance(self.params, pd.DataFrame):
             if kind == 'fit':
                 fig, ax = plt.subplots(figsize=(10, 6))
 
