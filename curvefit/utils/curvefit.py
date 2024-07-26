@@ -161,11 +161,15 @@ class SpectraFit:
         bounds, initial_guess = self.create_params_pseudo_voigt(self.x_values, self.y_values, self.peaks)
 
         jcf = CurveFit()
-        params_array, pcov = jcf.curve_fit(self.combined_pseudo_voigt,
-                                     self.x_values,
-                                     self.y_values,
-                                     p0=initial_guess,
-                                     bounds=bounds)
+
+        try:
+            params_array, pcov = jcf.curve_fit(self.combined_pseudo_voigt,
+                                        self.x_values,
+                                        self.y_values,
+                                        p0=initial_guess,
+                                        bounds=bounds)
+        except RuntimeError:
+            return None
         
         self.pcov = pcov
         self.predicted = self.combined_pseudo_voigt(self.x_values, *params_array)
