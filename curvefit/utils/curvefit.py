@@ -162,14 +162,11 @@ class SpectraFit:
 
         jcf = CurveFit()
 
-        try:
-            params_array, pcov = jcf.curve_fit(self.combined_pseudo_voigt,
-                                        self.x_values,
-                                        self.y_values,
-                                        p0=initial_guess,
-                                        bounds=bounds)
-        except RuntimeError:
-            return None
+        params_array, pcov = jcf.curve_fit(self.combined_pseudo_voigt,
+                                    self.x_values,
+                                    self.y_values,
+                                    p0=initial_guess,
+                                    bounds=bounds)
         
         self.pcov = pcov
         self.predicted = self.combined_pseudo_voigt(self.x_values, *params_array)
@@ -214,40 +211,42 @@ class SpectraFit:
         """
         Plot resulting fit/residuals
         """
+        if self.params:
+            if kind == 'fit':
+                fig, ax = plt.subplots(figsize=(10, 6))
 
-        if kind == 'fit':
-            fig, ax = plt.subplots(figsize=(10, 6))
+                ax.plot(self.x_values, self.y_values, label='Absorbance', color='blue')
+                ax.plot(self.x_values, self.predicted, label='Best fit', color='black')
+                ax.scatter(self.x_values[self.peaks], self.y_values[self.peaks], label='Peaks', color='red', s=32)
 
-            ax.plot(self.x_values, self.y_values, label='Absorbance', color='blue')
-            ax.plot(self.x_values, self.predicted, label='Best fit', color='black')
-            ax.scatter(self.x_values[self.peaks], self.y_values[self.peaks], label='Peaks', color='red', s=32)
+                for index, row in self.params.iterrows():
+                    pseudo_voigt = self.combined_pseudo_voigt(self.x_values, 
+                                                            row["wavenumber"], 
+                                                            row["gamma_gauss"], 
+                                                            row["gamma_lorentz"], 
+                                                            row["amplitude"], 
+                                                            row["eta"])
+                    ax.plot(self.x_values, pseudo_voigt, linestyle='--', linewidth=1)
 
-            for index, row in self.params.iterrows():
-                pseudo_voigt = self.combined_pseudo_voigt(self.x_values, 
-                                                        row["wavenumber"], 
-                                                        row["gamma_gauss"], 
-                                                        row["gamma_lorentz"], 
-                                                        row["amplitude"], 
-                                                        row["eta"])
-                ax.plot(self.x_values, pseudo_voigt, linestyle='--', linewidth=1)
+                ax.set_title('Pseudo Voigt fit')
+                ax.set_xlabel('Wavenumber')
+                ax.set_ylabel('Absorbance')
+                ax.legend()
 
-            ax.set_title('Pseudo Voigt fit')
-            ax.set_xlabel('Wavenumber')
-            ax.set_ylabel('Absorbance')
-            ax.legend()
+            elif kind == 'residuals':
+                fig, ax = plt.subplots(figsize=(10, 6))
 
-        elif kind == 'residuals':
-            fig, ax = plt.subplots(figsize=(10, 6))
+                residual = self.y_values - self.predicted
+                ax.plot(self.x_values, residual, label='Residual', color='green')
 
-            residual = self.y_values - self.predicted
-            ax.plot(self.x_values, residual, label='Residual', color='green')
-
-            ax.set_title('Pseudo Voigt fit Residuals')
-            ax.set_xlabel('Wavenumber')
-            ax.set_ylabel('Residual')
-            ax.legend()
-        
+                ax.set_title('Pseudo Voigt fit Residuals')
+                ax.set_xlabel('Wavenumber')
+                ax.set_ylabel('Residual')
+                ax.legend()
+            
+            else:
+                raise ValueError('Kind should be either "fit" or "residuals"')
         else:
-            raise ValueError('kind should be either "fit" or "residuals"')
+            raise ValueError("You need to fit a model first.")
     
         return fig, ax
