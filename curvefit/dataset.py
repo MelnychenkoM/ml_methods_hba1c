@@ -5,25 +5,23 @@ from scipy.signal import savgol_filter
 
 
 class DatasetSpectra:
-    def __init__(self, file_path, domain_path, target='hba1c'):
-        self.data = pd.read_csv(file_path)
-        self.spectra = self.data.iloc[:, :-2].to_numpy()
-        self.n_samples = self.spectra.shape[0]
-        self.n_features = self.spectra.shape[1]
-        self.wavenumbers = pd.read_csv(domain_path).to_numpy().reshape(-1)
-
-        if target == 'hba1c':
-            self.target = self.data.iloc[:, -2].to_numpy()
-        elif target == 'age':
-            self.target = self.data.iloc[:, -1].to_numpy()
-        else:
-            raise ValueError("target must be == 'hba1c' or 'age'")
+    def __init__(self, file_path, domain_path):
+        try:
+            self.data = pd.read_csv(file_path)
+            self.spectra = self.data.iloc[:, :-2].to_numpy()
+            self.n_samples = self.spectra.shape[0]
+            self.n_features = self.spectra.shape[1]
+            self.wavenumbers = pd.read_csv(domain_path).to_numpy().reshape(-1)
+            self.hba1c = self.data.iloc[:, -2].to_numpy()
+            self.age = self.data.iloc[:, -1].to_numpy()
+        except Exception as e:
+            print(f"The following error occured while loading the dataset: {e}")
 
     def __len__(self):
         return self.n_samples
     
     def __getitem__(self, key):
-        return self.spectra[key], self.target[key]
+        return self.spectra[key], self.hba1c[key], self.age[key]
     
     def __iter__(self):
         self.current_index = 0

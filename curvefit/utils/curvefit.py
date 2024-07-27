@@ -177,12 +177,14 @@ class SpectraFit:
         
         areas = []
         fwhms = []
+        height = []
 
         y_combined = self.combined_pseudo_voigt(self.x_values, *params_array)
         total_area = np.trapz(y_combined, x=self.x_values)
 
         for i in range(0, len(params_array), 5):
             y_pred = self.combined_pseudo_voigt(self.x_values, *params_array[i:i+5])
+            height.append(max(y_pred))
             fwhms.append(self.calculate_FWHM_pseudo_voigt(self.x_values, y_pred))
             areas.append(np.trapz(y_pred / total_area, x=self.x_values))
 
@@ -194,14 +196,16 @@ class SpectraFit:
         self.eta = params_array[4::5]
         self.fwhm = np.array(fwhms)
         self.areas = np.array(areas)
+        self.height = np.array(height)
 
         self.params = pd.DataFrame({
             "wavenumber": self.wavenumers,
-            "gamma_gauss": self.gamma_gauss,
-            "gamma_lorentz": self.gamma_lorentz,
+            "fwhm_gauss": self.gamma_gauss,
+            "fwhm_lorentz": self.gamma_lorentz,
             "amplitude": self.amplitude,
             "eta": self.eta,
             "FWHM": self.fwhm,
+            "height": self.height,
             "area": self.areas,
         })
 
@@ -217,13 +221,13 @@ class SpectraFit:
 
                 ax.plot(self.x_values, self.y_values, label='Absorbance', color='blue')
                 ax.plot(self.x_values, self.predicted, label='Best fit', color='black')
-                ax.scatter(self.x_values[self.peaks], self.y_values[self.peaks], label='Peaks', color='red', s=32)
+                ax.scatter(self.x_values[self.peaks], self.y_values[self.peaks], label='Peaks', color='red', s=16)
 
                 for index, row in self.params.iterrows():
                     pseudo_voigt = self.combined_pseudo_voigt(self.x_values, 
                                                             row["wavenumber"], 
-                                                            row["gamma_gauss"], 
-                                                            row["gamma_lorentz"], 
+                                                            row["fwhm_gauss"], 
+                                                            row["fwhm_lorentz"], 
                                                             row["amplitude"], 
                                                             row["eta"])
                     ax.plot(self.x_values, pseudo_voigt, linestyle='--', linewidth=1)
