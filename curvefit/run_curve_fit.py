@@ -59,7 +59,7 @@ def main(data_path, domain_path, peaks_path, output_dir, fit_sample):
 
                 filename = f"{i}_fit_{hba1c}_{int(age)}.csv"
                 output_path = os.path.join(output_dir, filename)
-                model.params.to_csv(output_path, sep='\t')
+                model.params.to_csv(output_path)
 
                 with open(fit_info_path, 'a') as fit_info_file:
                     fit_info_file.write(f"{i}\t{model.r2:.5f}\t{model.discrepancy:.5e}\t{hba1c}\t{age}\n")
