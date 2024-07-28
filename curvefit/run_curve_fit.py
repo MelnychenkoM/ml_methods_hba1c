@@ -8,7 +8,7 @@ from dataset import DatasetSpectra
 import matplotlib.pyplot as plt
 
 START = 1000
-END = 1700
+END = 1715
 NORMALIZATION = 'amide'
 
 def main(data_path, domain_path, peaks_path, output_dir, fit_sample):
@@ -34,7 +34,7 @@ def main(data_path, domain_path, peaks_path, output_dir, fit_sample):
         print(f"HbA1c: {hba1c}, Age: {int(age)}")
         model.plot_fit()
         plt.show()
-        sys.exit(1)
+        sys.exit(0)
 
     if not os.path.exists(output_dir):
         os.mkdir(output_dir)
@@ -56,7 +56,6 @@ def main(data_path, domain_path, peaks_path, output_dir, fit_sample):
 
             try:
                 model.fit(x_values, spectra, peaks)
-
                 filename = f"{i}_fit_{hba1c}_{int(age)}.csv"
                 output_path = os.path.join(output_dir, filename)
                 model.params.to_csv(output_path)
@@ -77,7 +76,7 @@ if __name__ == '__main__':
     parser.add_argument('--data_path', type=str, required=True, help="Path to the dataset CSV file")
     parser.add_argument('--domain_path', type=str, required=True, help="Path to the domain CSV file")
     parser.add_argument('--peaks_path', type=str, required=True, help="Path to the peaks CSV file")
-    parser.add_argument('--output_dir', type=str, default='~/data/fits/fit1/', help="Directory to save fit info")
+    parser.add_argument('--output_dir', type=str, default='~/data/fits/', help="Directory to save fit info")
     parser.add_argument('--fit_sample', type=int, default=None, help="Number of the sample to fit")
     
     args = parser.parse_args()

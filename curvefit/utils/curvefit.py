@@ -142,7 +142,7 @@ class SpectraFit:
 
         return (lower_bound, upper_bound), params
 
-    def fit(self, x_values, y_values, peaks):
+    def fit(self, x_values, y_values, peaks, param_dict=None):
         """
         Curve fitting using jaxfit.
         -------------------------------------
@@ -158,7 +158,10 @@ class SpectraFit:
         self.y_values = y_values
         self.peaks = [np.argmin(np.abs(self.x_values - peak)) for peak in peaks]
 
-        bounds, initial_guess = self.create_params_pseudo_voigt(self.x_values, self.y_values, self.peaks)
+        bounds, initial_guess = self.create_params_pseudo_voigt(self.x_values, 
+                                                                self.y_values, 
+                                                                self.peaks,
+                                                                param_dict=param_dict)
 
         jcf = CurveFit()
 
