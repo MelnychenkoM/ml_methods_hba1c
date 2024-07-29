@@ -4,8 +4,6 @@ import matplotlib.pyplot as plt
 from boxsers.preprocessing import rubberband_baseline_cor
 from scipy.signal import savgol_filter
 
-
-
 class DatasetSpectra:
     def __init__(self, file_path, domain_path):
         try:
@@ -58,12 +56,14 @@ class DatasetSpectra:
         mask = (self.wavenumbers >= start) & (self.wavenumbers <= end)
         self.spectra = self.spectra[:, mask]
         self.wavenumbers = self.wavenumbers[mask]
+        self.n_features = self.spectra.shape[1]
     
     def select_max_abs(self, absorbance):
         mask = self.spectra.max(axis=1) >= absorbance
         self.spectra = self.spectra[mask, :]
         self.hba1c = self.hba1c[mask]
         self.age = self.age[mask]
+        self.n_samples = self.spectra.shape[0]
 
     def plot_spectra(self):
         plt.figure(figsize=(8, 4))

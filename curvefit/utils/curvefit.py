@@ -4,6 +4,7 @@ from jaxfit import CurveFit
 import jax.numpy as jnp
 from sklearn.metrics import r2_score
 import matplotlib.pyplot as plt
+import plotly.graph_objects as go
 
 class SpectraFit:
     def __init__(self):
@@ -257,3 +258,61 @@ class SpectraFit:
             raise ValueError("You need to fit a model first.")
     
         return fig, ax
+    
+    def plot_fit_plotly(self, kind='fit'):
+        """
+        Plot resulting fit/residuals
+        """
+        if isinstance(self.params, pd.DataFrame):
+            if kind == 'fit':
+                fig = go.Figure()
+                fig.add_trace(go.Scatter(x=self.x_values, y=self.y_values, mode='lines', name='Absorbance'))
+                fig.add_trace(go.Scatter(x=self.x_values, y=self.predicted, mode='lines', name='Best fit', line=dict(color='black')))
+                fig.add_trace(go.Scatter(
+                    x=self.x_values[self.peaks],
+                    y=self.y_values[self.peaks],
+                    mode='markers',
+                    name='Peaks',
+                    marker=dict(size=8, color='red'),
+                    visible='legendonly'
+                ))
+
+                fig.update_layout(title='Pseudo Voigt fit', 
+                      xaxis_title='Wavenumber', 
+                      yaxis_title='Absorbance', 
+                      height=650, 
+                      width=950
+                     )
+
+
+                for index, row in self.params.iterrows():
+                    pseudo_voigt = self.combined_pseudo_voigt(self.x_values, 
+                                                            row["wavenumber"], 
+                                                            row["fwhm_gauss"], 
+                                                            row["fwhm_lorentz"], 
+                                                            row["amplitude"], 
+                                                            row["eta"])
+                    fig.add_trace(go.Scatter(x=self.x_values, 
+                                 y=pseudo_voigt, 
+                                 mode='lines', 
+                                 line=dict(width=1, dash='dash'),
+                                 name=str(round(row['wavenumber'], 2))))
+
+            elif kind == 'residuals':
+                residual = self.y_values - self.predicted
+    
+                fig_residuals = go.Figure()
+                fig_residuals.add_trace(go.Scatter(x=self.x_values, y=residual, mode='lines', name='Residuals', line=dict(color='green')))
+                fig_residuals.update_layout(title='Pseudo Voigt fit Residuals', 
+                        xaxis_title='Wavenumber', 
+                        yaxis_title='Residual', 
+                        height=650, 
+                        width=950
+                        )
+            
+            else:
+                raise ValueError('Kind should be either "fit" or "residuals"')
+        else:
+            raise ValueError("You need to fit a model first.")
+    
+        return fig
