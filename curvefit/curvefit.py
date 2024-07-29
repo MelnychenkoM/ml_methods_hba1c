@@ -16,10 +16,8 @@ class SpectraFit:
         self.predicted = None
         self.discrepancy = None
         self.r2 = None
-
-    @staticmethod
-    def combinded_gaussian(x, *params):
-        return
+        self.initial_guess = None
+        self.model_loaded = False
 
     @staticmethod
     def combined_pseudo_voigt(x, *params):
@@ -29,25 +27,25 @@ class SpectraFit:
         ------------------------------------------------------------
         Arguments:
             params - voigt profile parameters 
-            (mu, gamma_gaussian, gamma_lorentzian, amplitude, eta)
+            (mu, gamma, amplitude, eta)
             mu - center of the distribution,
-            gamma_gaussion - FWHM of gaussian term,
-            gamma_lorentzian - FWHM of lorentzian term,
+            gamma - FWHM for both gaussian and lorentzian terms,
+            amplitude - peak height,
             eta - mixing parameter of the gaussian and lorentzian term
 
         Returns:
             jnp array
         """
-        N = len(params) // 5
+        N = len(params) // 4
         result = jnp.zeros_like(x)
         for i in range(N):
-            mu, gamma_gaussian, gamma_lorentzian, amplitude, eta = params[i*5:(i+1)*5]
+            mu, gamma, amplitude, eta = params[i*4:(i+1)*4]
 
-            a_G = (2 / gamma_gaussian) * jnp.sqrt(jnp.log(2) / jnp.pi)
-            b_G = (4 * jnp.log(2)) / (gamma_gaussian**2)
+            a_G = (2 / gamma) * jnp.sqrt(jnp.log(2) / jnp.pi)
+            b_G = (4 * jnp.log(2)) / (gamma**2)
             gaussian_term = a_G * jnp.exp(-b_G * (x - mu)**2)
 
-            lorentzian_term = (1 / jnp.pi) * ((gamma_lorentzian / 2) / ((x - mu)**2 + (gamma_lorentzian / 2)**2))
+            lorentzian_term = (1 / jnp.pi) * ((gamma / 2) / ((x - mu)**2 + (gamma / 2)**2))
 
             result += amplitude * (eta * gaussian_term + (1 - eta) * lorentzian_term)
 
@@ -56,11 +54,11 @@ class SpectraFit:
     @staticmethod
     def calculate_FWHM_pseudo_voigt(x, y):
         """
-        Calculates FWHM of a givem spectra
+        Calculates FWHM of a given spectra
         ----------------------------------
         Arguments:
             x - wavenumbers
-            y - abrosbance
+            y - absorbance
     
         Returns:
             FWHM
@@ -81,15 +79,14 @@ class SpectraFit:
 
         return FWHM
 
-    @staticmethod
-    def create_params_pseudo_voigt(x_values, y_values, peaks, param_dict=None):
+    def _create_params(self, x_values, y_values, peaks, param_dict=None):
         """
         Creates initial parameters and bounds for the fit given a list of peaks.
         ------------------------------------------------------------------------
         Arguments:
             x_values -- wavenumbers
             y_values -- absorbance
-            peaks -- peak indicies
+            peaks -- peak indices
             param_dict -- dictionary specifying parameter values and bounds
         
         Returns:
@@ -98,8 +95,7 @@ class SpectraFit:
 
         default_params = {
             "center": {"min": 5, "max": 5},
-            "fwhm_gauss": {"min": 0, "max": np.inf, "value": 5},
-            "fwhm_lorentz": {"min": 0, "max": np.inf, "value": 5},
+            "fwhm": {"min": 0, "max": np.inf, "value": 5},
             "amplitude": {"min": 0, "max": np.inf},
             "eta": {"min": 0, "max": 1, "value": 0.5}
         }
@@ -108,49 +104,69 @@ class SpectraFit:
             for key, value in param_dict.items():
                 if key in default_params:
                     default_params[key].update(value)
+                else:
+                    print(f"Parameter {key} is not found. Proceeding with default parameters.")
 
-        params = []
-        lower_bound = []
-        upper_bound = []
+        self.initial_guess = []
+        self.lower_bound = []
+        self.upper_bound = []
 
         for peak in peaks:
             wavenumber = x_values[peak]
             amplitude = y_values[peak]
 
-            params.extend([
+            self.initial_guess.extend([
                 wavenumber,                               # center
-                default_params["fwhm_gauss"]["value"],    # FWHM Gaussian
-                default_params["fwhm_lorentz"]["value"],  # FWHM Lorentzian
+                default_params["fwhm"]["value"],         # FWHM
                 amplitude,                                # A
                 default_params["eta"]["value"]            # eta (initial guess, can be modified)
             ])
 
-            lower_bound.extend([
+            self.lower_bound.extend([
                 wavenumber - default_params["center"]["min"],   # Lower bound for center
-                default_params["fwhm_gauss"]["min"],            # Lower bound for Gaussian FWHM (sigma)
-                default_params["fwhm_lorentz"]["min"],          # Lower bound for Lorentzian FWHM (gamma)
+                default_params["fwhm"]["min"],                 # Lower bound for FWHM
                 default_params["amplitude"]["min"],             # Lower bound for A
                 default_params["eta"]["min"]                    # Lower bound for eta
             ])
 
-            upper_bound.extend([
+            self.upper_bound.extend([
                 wavenumber + default_params["center"]["max"],   # Upper bound for center
-                default_params["fwhm_gauss"]["max"],            # Upper bound for Gaussian FWHM (sigma)
-                default_params["fwhm_lorentz"]["max"],          # Upper bound for Lorentzian FWHM (gamma)
+                default_params["fwhm"]["max"],                 # Upper bound for FWHM
                 default_params["amplitude"]["max"],             # Upper bound for A
                 default_params["eta"]["max"]                    # Upper bound for eta
             ])
 
-        return (lower_bound, upper_bound), params
+        return None
+    
+    def load_model(self, model):
+        """
+        Loads the bounds and initial guess from another model, 
+        disregarding any parameters provided in param_dict. 
+        This function is intended for fitting spectra based on a previous fit.
+        ---------------------------------------------------------------------
+        Arguments:
+            model - an instance of SpectraFit
+        """
+        if isinstance(model, SpectraFit):
+            try:
+                self.initial_guess = model.params_array
+                self.lower_bound = model.lower_bound
+                self.upper_bound = model.upper_bound
+                self.model_loaded = True
+            except Exception as e:
+                print(f"The following error occured while loading the model: {e}")
+        else:
+            raise ValueError("model has to be an instance of SpectraFit")
+        return None
 
     def fit(self, x_values, y_values, peaks, param_dict=None):
         """
         Curve fitting using jaxfit.
         -------------------------------------
         Arguments:
-            x_values - wavenumers
+            x_values - wavenumbers
             y_values - absorbance
-            peaks - peak indicies
+            peaks - peak indices
         
         Returns:
             fit parameters
@@ -159,56 +175,53 @@ class SpectraFit:
         self.y_values = y_values
         self.peaks = [np.argmin(np.abs(self.x_values - peak)) for peak in peaks]
 
-        bounds, initial_guess = self.create_params_pseudo_voigt(self.x_values, 
-                                                                self.y_values, 
-                                                                self.peaks,
-                                                                param_dict=param_dict)
+        if not self.model_loaded:
+            self._create_params(self.x_values, 
+                                self.y_values, 
+                                self.peaks,
+                                param_dict=param_dict
+                                )
 
         jcf = CurveFit()
+
+        bounds = (self.lower_bound, self.upper_bound)
 
         params_array, pcov = jcf.curve_fit(self.combined_pseudo_voigt,
                                     self.x_values,
                                     self.y_values,
-                                    p0=initial_guess,
+                                    p0=self.initial_guess,
                                     bounds=bounds)
         
+        self.params_array = params_array
         self.pcov = pcov
         self.predicted = self.combined_pseudo_voigt(self.x_values, *params_array)
         self.discrepancy = np.sqrt(np.mean((self.predicted - self.y_values)**2))
         self.r2 = r2_score(self.y_values, self.predicted)
 
-        # print(f"DIS: {self.discrepancy:.3e}", f"R2: {self.r2:.5f}")
-        
         areas = []
-        fwhms = []
         height = []
 
         y_combined = self.combined_pseudo_voigt(self.x_values, *params_array)
         total_area = np.trapz(y_combined, x=self.x_values)
 
-        for i in range(0, len(params_array), 5):
-            y_pred = self.combined_pseudo_voigt(self.x_values, *params_array[i:i+5])
+        for i in range(0, len(params_array), 4):
+            y_pred = self.combined_pseudo_voigt(self.x_values, *params_array[i:i+4])
             height.append(max(y_pred))
-            fwhms.append(self.calculate_FWHM_pseudo_voigt(self.x_values, y_pred))
             areas.append(np.trapz(y_pred / total_area, x=self.x_values))
 
 
-        self.wavenumers = params_array[::5]
-        self.gamma_gauss = params_array[1::5]
-        self.gamma_lorentz = params_array[2::5]
-        self.amplitude = params_array[3::5]
-        self.eta = params_array[4::5]
-        self.fwhm = np.array(fwhms)
+        self.wavenumbers = params_array[::4]
+        self.gamma = params_array[1::4]
+        self.amplitude = params_array[2::4]
+        self.eta = params_array[3::4]
         self.areas = np.array(areas)
         self.height = np.array(height)
 
         self.params = pd.DataFrame({
-            "wavenumber": self.wavenumers,
-            "fwhm_gauss": self.gamma_gauss,
-            "fwhm_lorentz": self.gamma_lorentz,
+            "wavenumber": self.wavenumbers,
+            "FWHM": self.gamma,
             "amplitude": self.amplitude,
             "eta": self.eta,
-            "FWHM": self.fwhm,
             "height": self.height,
             "area": self.areas,
         })
@@ -219,7 +232,7 @@ class SpectraFit:
         """
         Plot resulting fit/residuals
         """
-        if isinstance(self.params, pd.DataFrame):
+        if self.params is not None:
             if kind == 'fit':
                 fig, ax = plt.subplots(figsize=(10, 6))
 
@@ -230,8 +243,7 @@ class SpectraFit:
                 for index, row in self.params.iterrows():
                     pseudo_voigt = self.combined_pseudo_voigt(self.x_values, 
                                                             row["wavenumber"], 
-                                                            row["fwhm_gauss"], 
-                                                            row["fwhm_lorentz"], 
+                                                            row["FWHM"], 
                                                             row["amplitude"], 
                                                             row["eta"])
                     ax.plot(self.x_values, pseudo_voigt, linestyle='--', linewidth=1)
@@ -249,7 +261,7 @@ class SpectraFit:
 
                 ax.set_title('Pseudo Voigt fit Residuals')
                 ax.set_xlabel('Wavenumber')
-                ax.set_ylabel('Residual')
+                ax.set_ylabel('Residuals')
                 ax.legend()
             
             else:
@@ -263,7 +275,7 @@ class SpectraFit:
         """
         Plot resulting fit/residuals
         """
-        if isinstance(self.params, pd.DataFrame):
+        if self.params is not None:
             if kind == 'fit':
                 fig = go.Figure()
                 fig.add_trace(go.Scatter(x=self.x_values, y=self.y_values, mode='lines', name='Absorbance'))
@@ -288,8 +300,7 @@ class SpectraFit:
                 for index, row in self.params.iterrows():
                     pseudo_voigt = self.combined_pseudo_voigt(self.x_values, 
                                                             row["wavenumber"], 
-                                                            row["fwhm_gauss"], 
-                                                            row["fwhm_lorentz"], 
+                                                            row["FWHM"], 
                                                             row["amplitude"], 
                                                             row["eta"])
                     fig.add_trace(go.Scatter(x=self.x_values, 

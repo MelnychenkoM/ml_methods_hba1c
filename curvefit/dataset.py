@@ -1,8 +1,11 @@
 import pandas as pd
 import numpy as np
-import matplotlib.pyplot as plt
 from boxsers.preprocessing import rubberband_baseline_cor
 from scipy.signal import savgol_filter
+
+import matplotlib.pyplot as plt
+from matplotlib.colors import Normalize
+from matplotlib import cm
 
 class DatasetSpectra:
     def __init__(self, file_path, domain_path):
@@ -65,18 +68,35 @@ class DatasetSpectra:
         self.age = self.age[mask]
         self.n_samples = self.spectra.shape[0]
 
-    def plot_spectra(self):
-        plt.figure(figsize=(8, 4))
+    def plot_spectra(self, target='hba1c'):
+        """
+        Plot spectra with colors corresponding to target values.
+        Arguments:
+            target - the target value to color the spectra by ('hba1c' or 'age')
+        """
+        if target not in ['hba1c', 'age']:
+            raise ValueError("Parameter 'target' should be either 'hba1c' or 'age'")
+        
+        if target == 'hba1c':
+            target_values = self.hba1c
+        else:
+            target_values = self.age
+
+        norm = Normalize(vmin=target_values.min(), vmax=target_values.max())
+        cmap = cm.viridis
+
+        fig, ax = plt.subplots(figsize=(10, 6))
 
         for idx in range(self.n_samples):
-            plt.plot(self.wavenumbers, self.spectra[idx])
-        
-        plt.xlabel('Wavenumber')
-        plt.ylabel('Absorbance')
+            ax.plot(self.wavenumbers, self.spectra[idx], color=cmap(norm(target_values[idx])), alpha=0.7)
+
+        sm = plt.cm.ScalarMappable(cmap=cmap, norm=norm)
+        sm.set_array([])
+        cbar = fig.colorbar(sm, ax=ax, label=target.capitalize())
+
+        ax.set_xlabel('Wavenumber')
+        ax.set_ylabel('Absorbance')
         plt.show()
-    
-    def get_targets(self):
-        return self.target
     
     def get_spectra(self):
         return self.spectra
