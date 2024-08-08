@@ -117,7 +117,7 @@ class SpectraFit:
 
             self.initial_guess.extend([
                 wavenumber,                               # center
-                default_params["fwhm"]["value"],         # FWHM
+                default_params["fwhm"]["value"],          # FWHM
                 amplitude,                                # A
                 default_params["eta"]["value"]            # eta (initial guess, can be modified)
             ])
@@ -159,7 +159,7 @@ class SpectraFit:
             raise ValueError("model has to be an instance of SpectraFit")
         return None
 
-    def fit(self, x_values, y_values, peaks, param_dict=None):
+    def fit(self, x_values, y_values, peaks, param_dict=None, **kwargs):
         """
         Curve fitting using jaxfit.
         -------------------------------------
@@ -167,6 +167,7 @@ class SpectraFit:
             x_values - wavenumbers
             y_values - absorbance
             peaks - peak indices
+            kwargs -- keyword arguments for curve_fit
         
         Returns:
             fit parameters
@@ -190,7 +191,9 @@ class SpectraFit:
                                     self.x_values,
                                     self.y_values,
                                     p0=self.initial_guess,
-                                    bounds=bounds)
+                                    bounds=bounds,
+                                    **kwargs,
+                                    )
         
         self.params_array = params_array
         self.pcov = pcov

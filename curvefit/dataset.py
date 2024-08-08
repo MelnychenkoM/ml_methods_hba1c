@@ -39,23 +39,39 @@ class DatasetSpectra:
             raise StopIteration
 
     def baseline_corr(self):
+        """
+        Rubberband baseline correction
+        """
         self.spectra = np.apply_along_axis(lambda row: rubberband_baseline_cor(row).squeeze(), 1, self.spectra)
         return None
     
     def normalization(self, kind='amide'):
+        """
+        Spectra normalization
+        """
         if kind == 'amide':
             self.spectra = self.spectra / self.spectra.max(axis=1, keepdims=True)
         elif kind == 'vector':
             norms = np.linalg.norm(self.spectra, axis=1, keepdims=True)
             self.spectra = self.spectra / norms
+        elif kind == 'snv':
+            means = self.spectra.mean(axis=1, keepdims=True)
+            std = self.spectra.std(axis=1, keepdims=True)
+            self.spectra = self.spectra - means / std
         else:
-            raise ValueError("Parameter 'kind' should be either 'amide' or 'vector'")
+            raise ValueError("Parameter 'kind' should be either amide|vector|snv")
         return None
     
     def savgol_filter(self, **kwargs):
+        """
+        Savitzky-Golay filter
+        """
         self.spectra = np.apply_along_axis(lambda row: savgol_filter(row, **kwargs).squeeze(), 1, self.spectra)
     
     def select_region(self, start, end):
+        """
+        Selects 
+        """
         mask = (self.wavenumbers >= start) & (self.wavenumbers <= end)
         self.spectra = self.spectra[:, mask]
         self.wavenumbers = self.wavenumbers[mask]
