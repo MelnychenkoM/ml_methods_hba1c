@@ -124,14 +124,14 @@ class SpectraFit:
 
             self.lower_bound.extend([
                 wavenumber - default_params["center"]["min"],   # Lower bound for center
-                default_params["fwhm"]["min"],                 # Lower bound for FWHM
+                default_params["fwhm"]["min"],                  # Lower bound for FWHM
                 default_params["amplitude"]["min"],             # Lower bound for A
                 default_params["eta"]["min"]                    # Lower bound for eta
             ])
 
             self.upper_bound.extend([
                 wavenumber + default_params["center"]["max"],   # Upper bound for center
-                default_params["fwhm"]["max"],                 # Upper bound for FWHM
+                default_params["fwhm"]["max"],                  # Upper bound for FWHM
                 default_params["amplitude"]["max"],             # Upper bound for A
                 default_params["eta"]["max"]                    # Upper bound for eta
             ])
@@ -202,6 +202,7 @@ class SpectraFit:
         self.r2 = r2_score(self.y_values, self.predicted)
 
         areas = []
+        areas_abs = []
         height = []
 
         y_combined = self.combined_pseudo_voigt(self.x_values, *params_array)
@@ -211,6 +212,7 @@ class SpectraFit:
             y_pred = self.combined_pseudo_voigt(self.x_values, *params_array[i:i+4])
             height.append(max(y_pred))
             areas.append(np.trapz(y_pred / total_area, x=self.x_values))
+            areas_abs.append(np.trapz(y_pred, x=self.x_values))
 
 
         self.wavenumbers = params_array[::4]
@@ -218,6 +220,7 @@ class SpectraFit:
         self.amplitude = params_array[2::4]
         self.eta = params_array[3::4]
         self.areas = np.array(areas)
+        self.areas_abs = np.array(areas_abs)
         self.height = np.array(height)
 
         self.params = pd.DataFrame({
@@ -227,6 +230,7 @@ class SpectraFit:
             "eta": self.eta,
             "height": self.height,
             "area": self.areas,
+            "area_absolute": areas_abs
         })
 
         return self.params
@@ -241,7 +245,7 @@ class SpectraFit:
 
                 ax.plot(self.x_values, self.y_values, label='Absorbance', color='blue')
                 ax.plot(self.x_values, self.predicted, label='Best fit', color='black')
-                ax.scatter(self.x_values[self.peaks], self.y_values[self.peaks], label='Peaks', color='red', s=16)
+                # ax.scatter(self.x_values[self.peaks], self.y_values[self.peaks], label='Peaks', color='red', s=10)
 
                 for index, row in self.params.iterrows():
                     pseudo_voigt = self.combined_pseudo_voigt(self.x_values, 
@@ -249,7 +253,7 @@ class SpectraFit:
                                                             row["FWHM"], 
                                                             row["amplitude"], 
                                                             row["eta"])
-                    ax.plot(self.x_values, pseudo_voigt, linestyle='--', linewidth=1)
+                    ax.plot(self.x_values, pseudo_voigt, linestyle='--', linewidth=0.6, color='k')
 
                 ax.set_title('Pseudo Voigt fit')
                 ax.set_xlabel('Wavenumber')

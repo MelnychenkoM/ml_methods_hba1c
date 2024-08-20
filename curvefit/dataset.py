@@ -84,6 +84,14 @@ class DatasetSpectra:
         self.age = self.age[mask]
         self.n_samples = self.spectra.shape[0]
 
+    def drop_samples(self, indices):
+        mask = np.ones(len(self), dtype=bool)
+        mask[indices] = False
+        self.spectra = self.spectra[mask]
+        self.hba1c = self.hba1c[mask]
+        self.age = self.age[mask]
+        self.n_samples = self.spectra.shape[0]
+
     def plot_spectra(self, target='hba1c'):
         """
         Plot spectra with colors corresponding to target values.
