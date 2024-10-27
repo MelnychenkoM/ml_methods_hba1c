@@ -136,7 +136,7 @@ class DatasetSpectra:
         sm.set_array([])
 
         if len(self.regions) == 1:
-            fig, ax = plt.subplots(figsize=(10, 4))
+            fig, ax = plt.subplots(figsize=(7, 3))
 
             for idx in range(self.n_samples):
                 ax.plot(self.wavenumbers, self.spectra[idx], color=cmap(norm(target_values[idx])), alpha=0.7)
@@ -148,7 +148,7 @@ class DatasetSpectra:
             return fig, ax
 
         elif len(self.regions) == 2:
-            fig = plt.figure(figsize=(10, 4))
+            fig = plt.figure(figsize=(7, 3))
 
             start1, end1 = self.regions[0]
             start2, end2 = self.regions[1]

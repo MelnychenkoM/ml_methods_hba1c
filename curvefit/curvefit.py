@@ -241,11 +241,19 @@ class SpectraFit:
         """
         if self.params is not None:
             if kind == 'fit':
-                fig, ax = plt.subplots(figsize=(10, 6))
+                fig, ax = plt.subplots(figsize=(7, 3))
 
-                ax.plot(self.x_values, self.y_values, label='Absorbance', color='blue')
-                ax.plot(self.x_values, self.predicted, label='Best fit', color='black')
+                ax.plot(self.x_values, self.predicted, label='Best fit', color='#d62728')
+                ax.plot(self.x_values, self.y_values, label='Absorbance', color='#1f77b4')
                 # ax.scatter(self.x_values[self.peaks], self.y_values[self.peaks], label='Peaks', color='red', s=10)
+
+                label_text = f"DIS: {self.discrepancy:.1e}\n$R^2$: {self.r2:.5f}"
+
+                x_text = 0.03
+                y_text = 0.75
+                ax.text(x_text, y_text, label_text, 
+                        transform=ax.transAxes, ha='left', va='top', fontsize=10, 
+                        bbox=dict(facecolor='white', alpha=0.5, edgecolor='none'))
 
                 for index, row in self.params.iterrows():
                     pseudo_voigt = self.combined_pseudo_voigt(self.x_values, 
@@ -253,23 +261,20 @@ class SpectraFit:
                                                             row["FWHM"], 
                                                             row["amplitude"], 
                                                             row["eta"])
-                    ax.plot(self.x_values, pseudo_voigt, linestyle='--', linewidth=0.6, color='k')
+                    ax.plot(self.x_values, pseudo_voigt, linestyle='--', linewidth=0.8, color='#7f7f7f')
 
-                ax.set_title('Pseudo Voigt fit')
-                ax.set_xlabel('Wavenumber')
+                ax.set_xlabel('Wavenumber cm$^{-1}$')
                 ax.set_ylabel('Absorbance')
                 ax.legend()
 
             elif kind == 'residuals':
-                fig, ax = plt.subplots(figsize=(10, 6))
+                fig, ax = plt.subplots(figsize=(7, 3))
 
                 residual = self.y_values - self.predicted
-                ax.plot(self.x_values, residual, label='Residual', color='green')
+                ax.plot(self.x_values, residual, color='#9467bd', linewidth=0.8)
 
-                ax.set_title('Pseudo Voigt fit Residuals')
-                ax.set_xlabel('Wavenumber')
+                ax.set_xlabel('Wavenumber cm$^{-1}$')
                 ax.set_ylabel('Residuals')
-                ax.legend()
             
             else:
                 raise ValueError('Kind should be either "fit" or "residuals"')
@@ -297,7 +302,7 @@ class SpectraFit:
                 ))
 
                 fig.update_layout(title='Pseudo Voigt fit', 
-                      xaxis_title='Wavenumber', 
+                      xaxis_title='Wavenumbers', 
                       yaxis_title='Absorbance', 
                       height=650, 
                       width=950
@@ -322,7 +327,7 @@ class SpectraFit:
                 fig_residuals = go.Figure()
                 fig_residuals.add_trace(go.Scatter(x=self.x_values, y=residual, mode='lines', name='Residuals', line=dict(color='green')))
                 fig_residuals.update_layout(title='Pseudo Voigt fit Residuals', 
-                        xaxis_title='Wavenumber', 
+                        xaxis_title='Wavenumber cm$^{-1}$', 
                         yaxis_title='Residual', 
                         height=650, 
                         width=950
@@ -334,3 +339,34 @@ class SpectraFit:
             raise ValueError("You need to fit a model first.")
     
         return fig
+    
+def combined_pseudo_voigt(x, *params):
+    """ 
+    Voigt profile approximation by 
+    linear combination of Lorenzian and Gaussian distributions. 
+    ------------------------------------------------------------
+    Arguments:
+        params - voigt profile parameters 
+        (mu, gamma, amplitude, eta)
+        mu - center of the distribution,
+        gamma - FWHM for both gaussian and lorentzian terms,
+        amplitude - peak height,
+        eta - mixing parameter of the gaussian and lorentzian term
+
+    Returns:
+        jnp array
+    """
+    N = len(params) // 4
+    result = np.zeros_like(x)
+    for i in range(N):
+        mu, gamma, amplitude, eta = params[i*4:(i+1)*4]
+
+        a_G = (2 / gamma) * jnp.sqrt(np.log(2) / np.pi)
+        b_G = (4 * np.log(2)) / (gamma**2)
+        gaussian_term = a_G * jnp.exp(-b_G * (x - mu)**2)
+
+        lorentzian_term = (1 / np.pi) * ((gamma / 2) / ((x - mu)**2 + (gamma / 2)**2))
+
+        result += amplitude * (eta * gaussian_term + (1 - eta) * lorentzian_term)
+
+    return result

@@ -9,7 +9,7 @@ dataset = DatasetSpectra(file_path, domain_path)
 dataset.select_region([400, 4000])
 fig, ax = dataset.plot_spectra()
 ```
-The shapes required for the DatasetSpectra class are hardcoded for convenience. The dataset (file path parameter) is expected to have a shape of [n_features + 2, n_samples] , with the last two rows representing the age and HbA1c content of the participants. The domain should have a shape of [n_features, 1] and corresponds to the measurement domain, which is in units of 1/cm (in our case).
+The shapes required for the `DatasetSpectra` class are hardcoded for convenience. The dataset (file path parameter) is expected to have a shape of [n_features + 2, n_samples] , with the last two rows representing the age and HbA1c content of the participants. The domain should have a shape of [n_features, 1] and corresponds to the measurement domain, which is in units of 1/cm (in our case).
 ### Spectra fit
 The class for curve fitting, which utilizes the JAXFit library, was constructed to facilitate the modeling and analysis of spectral data.
 Please note that the peaks should be identified beforehand; functions for peak detection are provided in the `peaks.ipynb` notebook included in this repository.
@@ -18,8 +18,8 @@ spectra, hba1c, age = dataset[32]
 x_values = dataset.get_wavenumbers()
 
 params = {
-    "center": {"min": 2, "max": 2},
-    "fwhm": {"value": 5}
+    "center": {"min": 3, "max": 3},
+    "fwhm": {"value": 10}
 }
 
 pmodel = SpectraFit()
