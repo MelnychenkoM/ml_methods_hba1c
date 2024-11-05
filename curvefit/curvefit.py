@@ -235,7 +235,7 @@ class SpectraFit:
 
         return self.params
 
-    def plot_fit(self, kind='fit'):
+    def plot_fit(self, kind='fit', *, bin_num = 200):
         """
         Plot resulting fit/residuals
         """
@@ -275,7 +275,30 @@ class SpectraFit:
 
                 ax.set_xlabel('Wavenumber cm$^{-1}$')
                 ax.set_ylabel('Residuals')
-            
+
+            elif kind == 'residuals_cumsum':
+                fig, ax = plt.subplots(figsize=(7, 3))
+
+                residuals = self.y_values - self.predicted
+                bin_edges = np.linspace(self.x_values.min(), self.x_values.max(), num=bin_num)
+
+                bin_indices = np.digitize(self.x_values, bins=bin_edges)
+                binned_residuals = [residuals[bin_indices == i].sum() for i in range(1, len(bin_edges))]
+
+                bin_centers = 0.5 * (bin_edges[1:] + bin_edges[:-1])
+
+                ax.bar(bin_centers, 
+                       binned_residuals, 
+                       width=np.diff(bin_edges), 
+                       align='center', 
+                       color='skyblue', 
+                       edgecolor='k',
+                       linewidth=0.5,
+                       label="Binned Residuals Sum")
+                
+                ax.set_xlabel('Wavenumber cm$^{-1}$')
+                ax.set_ylabel('Residuals')
+
             else:
                 raise ValueError('Kind should be either "fit" or "residuals"')
         else:
