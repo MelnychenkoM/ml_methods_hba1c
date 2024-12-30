@@ -197,7 +197,7 @@ class SpectraFit:
         
         self.params_array = params_array
         self.pcov = pcov
-        self.predicted = self.combined_pseudo_voigt(self.x_values, *params_array)
+        self.predicted = np.array(self.combined_pseudo_voigt(self.x_values, *params_array))
         self.discrepancy = np.sqrt(np.mean((self.predicted - self.y_values)**2))
         self.r2 = r2_score(self.y_values, self.predicted)
 
@@ -384,9 +384,9 @@ def combined_pseudo_voigt(x, *params):
     for i in range(N):
         mu, gamma, amplitude, eta = params[i*4:(i+1)*4]
 
-        a_G = (2 / gamma) * jnp.sqrt(np.log(2) / np.pi)
+        a_G = (2 / gamma) * np.sqrt(np.log(2) / np.pi)
         b_G = (4 * np.log(2)) / (gamma**2)
-        gaussian_term = a_G * jnp.exp(-b_G * (x - mu)**2)
+        gaussian_term = a_G * np.exp(-b_G * (x - mu)**2)
 
         lorentzian_term = (1 / np.pi) * ((gamma / 2) / ((x - mu)**2 + (gamma / 2)**2))
 
