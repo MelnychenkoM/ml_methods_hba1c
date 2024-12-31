@@ -1,7 +1,21 @@
 __pycache__
-load_fit.ipynb
-data.ipynb
+
+# Test notebooks
+notebooks/figures.ipynb
+notebooks/data_analysis.ipynb
+Curve_Fitting_Demo.ipynb
+notebooks/load_fit.ipynb
+notebooks/data.ipynb
+
+# Folders
 figures/
+data/
 plsr/
-figures.ipynb
-models.py
+
+
+# CNN files to ignore
+src/cnn1d/lightning_logs/
+src/cnn1d/notebook.ipynb
+src/cnn1d/config.yaml
+src/cnn1d/mlruns/
+src/cnn1d/checkpoints
