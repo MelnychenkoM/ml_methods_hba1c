@@ -30,4 +30,4 @@ print(f"R2 : {pmodel.r2:.5f}, DIS: {pmodel.discrepancy:.3e}")
 ```
 ### Examples on Google Colab
 
-Here are some simple examples on Colab: [Google Colab Examples](https://colab.research.google.com/drive/1qpJxO0BUHP2cI3RBplI76r7Ra5AAwCYI?usp=sharing)
+Here is an example on Colab: [Google Colab Example](https://colab.research.google.com/drive/1qpJxO0BUHP2cI3RBplI76r7Ra5AAwCYI?usp=sharing)
