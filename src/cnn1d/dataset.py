@@ -20,24 +20,40 @@ class SpectraDataModule(L.LightningDataModule):
         super().__init__()
         self.data_folder = data_folder
         self.batch_size = batch_size
+        self.train_dataset = None
+        self.val_dataset = None
+        self.test_dataset = None
+
+    def _load_data(self, filename):
+        file_path = os.path.join(self.data_folder, filename)
+        return np.load(file_path).astype(np.float32)
 
     def setup(self, stage=None):
-        X_train = np.load(os.path.join(self.data_folder, 'X_train.npy')).astype(np.float32)
-        y_train = np.load(os.path.join(self.data_folder, 'y_train.npy')).astype(np.float32)
-        X_val = np.load(os.path.join(self.data_folder, 'X_val.npy')).astype(np.float32)
-        y_val = np.load(os.path.join(self.data_folder, 'y_val.npy')).astype(np.float32)
-        X_test = np.load(os.path.join(self.data_folder, 'X_test.npy')).astype(np.float32)
-        y_test = np.load(os.path.join(self.data_folder, 'y_test.npy')).astype(np.float32)
+        data_files = {
+            "X_train": "X_train.npy",
+            "y_train": "y_train.npy",
+            "X_val": "X_val.npy",
+            "y_val": "y_val.npy",
+            "X_test": "X_test.npy",
+            "y_test": "y_test.npy",
+        }
+
+        X_train = self._load_data(data_files["X_train"])
+        y_train = self._load_data(data_files["y_train"])
+        X_val = self._load_data(data_files["X_val"])
+        y_val = self._load_data(data_files["y_val"])
+        X_test = self._load_data(data_files["X_test"])
+        y_test = self._load_data(data_files["y_test"])
 
         self.train_dataset = SpectraDataset(X_train, y_train)
         self.val_dataset = SpectraDataset(X_val, y_val)
         self.test_dataset = SpectraDataset(X_test, y_test)
 
     def train_dataloader(self):
-        return DataLoader(self.train_dataset, batch_size=self.batch_size, shuffle=True)
+        return DataLoader(self.train_dataset, batch_size=self.batch_size, shuffle=True, num_workers=4)
 
     def val_dataloader(self):
-        return DataLoader(self.val_dataset, batch_size=self.batch_size, shuffle=False)
+        return DataLoader(self.val_dataset, batch_size=self.batch_size, shuffle=False, num_workers=4)
 
     def test_dataloader(self):
         return DataLoader(self.test_dataset, batch_size=self.batch_size, shuffle=False)

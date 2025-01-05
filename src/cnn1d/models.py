@@ -5,7 +5,6 @@ from torch import nn
 import torchmetrics
 import torch.nn.functional as F
 from torch.utils.data import DataLoader
-from torchvision import transforms
 import lightning as L
 
 from lightning.pytorch import Trainer
@@ -14,15 +13,10 @@ from lightning.pytorch.loggers import MLFlowLogger
 from lightning.pytorch.cli import LightningCLI
 from dataset import SpectraDataset, SpectraDataModule
 
-from datetime import datetime
 
-class InceptionModule(nn.Module):
-    pass
-
-
-class FullyConnectedLayer(nn.Module):
+class MLP(nn.Module):
     def __init__(self, input_size):
-        super(FullyConnectedLayer, self).__init__()
+        super(MLP, self).__init__()
         self.fc1 = nn.Linear(in_features=input_size, out_features=360)
         self.dropout1 = nn.Dropout(0.1)
         
@@ -62,7 +56,7 @@ class CNN1DModel(nn.Module):
         self.max_pool2 = nn.MaxPool1d(kernel_size=2, stride=2)
 
         flatten_size = self._calculate_flatten_size()
-        self.fc = FullyConnectedLayer(flatten_size)
+        self.fc = MLP(flatten_size)
 
     def _calculate_flatten_size(self):
         dummy_input = torch.zeros(1, 1, self.input_size)
@@ -81,13 +75,14 @@ class CNN1DModel(nn.Module):
         x = self.max_pool2(x)
 
         x = x.view(x.size(0), -1)
-        x = self.fc(x)
-        return x
+        output = self.fc(x)
+        return output
 
 
 class Lightning1DCNNModel(L.LightningModule):
     def __init__(self, input_size, learning_rate=1e-3):
         super(Lightning1DCNNModel, self).__init__()
+        self.save_hyperparameters()
         self.model = CNN1DModel(input_size)
         self.learning_rate = learning_rate
         self.criterion = nn.MSELoss()
@@ -99,13 +94,20 @@ class Lightning1DCNNModel(L.LightningModule):
 
     def forward(self, x):
         return self.model(x)
+    
+    def predict_step(self, batch, batch_idx):
+        x, _ = batch
+        y_pred = self.forward(x).squeeze(-1)
+        return y_pred
 
     def training_step(self, batch, batch_idx):
         x, y = batch
         y_pred = self.forward(x).squeeze(-1)
         loss = self.criterion(y_pred, y)
         
-        self.log('train_loss', loss, on_epoch=True, prog_bar=True)
+        self.log('train_loss', loss, 
+                 on_epoch=True, 
+                 prog_bar=True)
         return loss
 
     def validation_step(self, batch, batch_idx):
@@ -115,14 +117,16 @@ class Lightning1DCNNModel(L.LightningModule):
 
         r2 = self.r2_metric(y_pred, y)
         rmse = self.rmse_metric(y_pred, y)
-        r = self.pearson_corr(y_pred, y)
-        mae = self.mae_metric(y_pred, y)
 
-        self.log('val_loss', loss, on_epoch=True, prog_bar=True)
-        self.log('val_r2', r2, on_epoch=True, prog_bar=True)
-        self.log('val_rmse', rmse, on_epoch=True, prog_bar=True)
-        self.log('val_pearson_r', r, on_epoch=True, prog_bar=True)
-        self.log('val_mae', mae, on_epoch=True, prog_bar=True)
+        self.log_dict(
+            {
+                'val_r2': r2,
+                'val_loss': loss,
+                'val_rmse': rmse,
+            },
+            on_epoch=True,
+            prog_bar=True
+        )
         return loss
 
     def test_step(self, batch, batch_idx):
@@ -135,11 +139,17 @@ class Lightning1DCNNModel(L.LightningModule):
         r = self.pearson_corr(y_pred, y)
         mae = self.mae_metric(y_pred, y)
 
-        self.log('test_loss', loss, on_epoch=True, prog_bar=True)
-        self.log('test_r2', r2, on_epoch=True)
-        self.log('test_rmse', rmse, on_epoch=True)
-        self.log('test_pearson_r', r, on_epoch=True)
-        self.log('test_mae', mae, on_epoch=True)
+        self.log_dict(
+            {
+                'test_r2': r2,
+                'test_loss': loss,
+                'test_rmse': rmse,
+                'test_pearson_r': r,
+                'test_mae': mae,
+            },
+            on_epoch=True,
+            prog_bar=True
+        )
         return loss
 
     def configure_optimizers(self):
@@ -148,7 +158,7 @@ class Lightning1DCNNModel(L.LightningModule):
             optimizer, 
             mode="min",
             factor=0.5,
-            patience=5,
+            patience=10,
             min_lr=1e-6,
             verbose=True
         )
@@ -159,60 +169,3 @@ class Lightning1DCNNModel(L.LightningModule):
                 "monitor": "val_loss"
             }
         }
-    
-
-def generate_run_name(lr, batch_size, timestamp=True):
-    name = f"lr_{lr}_bs_{batch_size}"
-    if timestamp:
-        name += f"_{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}"
-    return name
-    
-
-def main():
-    torch.cuda.empty_cache()
-    torch.manual_seed(32)
-
-    input_size = 3319
-    learning_rate = 1e-4
-    batch_size = 32
-    max_epochs = 300
-
-    data_module = SpectraDataModule(data_folder='../../data/train_test_cnn/', batch_size=batch_size)
-
-    model = Lightning1DCNNModel(input_size=input_size, learning_rate=learning_rate)
-
-    run_name = generate_run_name(learning_rate, batch_size)
-    mlf_logger = MLFlowLogger(experiment_name="1D_CNN_Regression", 
-                              save_dir="./mlruns",
-                              run_name=run_name
-                              )
-
-    checkpoint_callback = ModelCheckpoint(
-        monitor="val_loss",
-        dirpath="./checkpoints",
-        filename="best-checkpoint-{epoch:02d}-{val_loss:.2f}",
-        save_top_k=1,
-        mode="min",
-        save_last=True
-    )
-    early_stopping_callback = EarlyStopping(
-        monitor="val_loss",
-        patience=10,
-        mode="min",
-    )
-
-    trainer = L.Trainer(
-        max_epochs=max_epochs,
-        logger=mlf_logger,
-        callbacks=[checkpoint_callback, early_stopping_callback],
-        log_every_n_steps=10,
-        enable_progress_bar=True,
-    )
-
-    trainer.fit(model, datamodule=data_module)
-    trainer.test(model, datamodule=data_module)
-
-    print("[1DCNN] Training complete. Checkpoints and logs saved.")
-
-if __name__ == "__main__":
-    main()

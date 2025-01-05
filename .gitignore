@@ -3,15 +3,14 @@ __pycache__
 # Test notebooks
 notebooks/figures.ipynb
 notebooks/data_analysis.ipynb
-Curve_Fitting_Demo.ipynb
+notebooks/peaks.ipynb
 notebooks/load_fit.ipynb
 notebooks/data.ipynb
+notebooks/Curve_Fitting_Demo.ipynb
 
 # Folders
 figures/
 data/
-plsr/
-
 
 # CNN files to ignore
 src/cnn1d/lightning_logs/
