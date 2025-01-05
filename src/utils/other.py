@@ -91,14 +91,20 @@ class FitReader:
 
         return None
 
-    def dataset_split(self, dataframe_name='areas', bins=8, test_size=0.2, target='HbA1c'):
+    def dataset_split(self, 
+                      dataframe_name='areas', 
+                      bins=8, 
+                      test_size=0.2, 
+                      target='HbA1c', 
+                      random_state=34
+                      ):
             """
             Splits a specified dataset inside self.<dataframe> into training and testing sets.
             """
 
             data = getattr(self, dataframe_name)
 
-            discretizer = KBinsDiscretizer(n_bins=bins, encode='ordinal', strategy='uniform', random_state=4)
+            discretizer = KBinsDiscretizer(n_bins=bins, encode='ordinal', strategy='uniform', random_state=random_state)
             categories = discretizer.fit_transform(data[target].values.reshape(-1, 1))
 
             X = data.drop(columns=['HbA1c', 'Age'])
@@ -111,7 +117,7 @@ class FitReader:
             X_train, X_test, y_train, y_test = train_test_split(X, y, 
                                                                 test_size=test_size, 
                                                                 stratify=categories, 
-                                                                random_state=34)
+                                                                random_state=random_state)
 
             return X_train, X_test, y_train, y_test
 
