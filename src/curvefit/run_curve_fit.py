@@ -1,8 +1,5 @@
 import sys
-sys.path.append('../src')
-
-import os
-print(os.getcwd())
+sys.path.append('../preprocessing')
 
 import argparse
 import os
@@ -10,7 +7,7 @@ import pandas as pd
 import json
 from tqdm.auto import tqdm
 from curvefit import SpectraFit
-from preprocessing.dataset import DatasetSpectra
+from dataset import DatasetSpectra
 import matplotlib.pyplot as plt
 
 

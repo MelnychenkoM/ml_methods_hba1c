@@ -6,6 +6,7 @@ from matplotlib.ticker import MaxNLocator
 from sklearn.cross_decomposition import PLSRegression
 from sklearn.model_selection import cross_val_predict, train_test_split
 from sklearn.metrics import mean_squared_error, r2_score
+from scipy.stats import pearsonr
 
 DEFAULT_COLOR = '#1f77b4'
 
@@ -90,7 +91,7 @@ class PLSRComponents:
 
     def evaluate(self, X_test, y_test):
         y_pred = self._fitted_model.predict(X_test)
-        fig, axs = plsr_r2_plot(y_test, y_pred)
+        fig, axs = validate_plot(y_test, y_pred)
         return fig, axs
     
     def get_fitted_model(self):
@@ -100,13 +101,14 @@ class PLSRComponents:
         pred = self._fitted_model.predict(X_test)
         return pred
     
-def plsr_r2_plot(y_true, y_predicted):
+def validate_plot(y_true, y_predicted):
     """
     Plot y true against y predicted
     """
     fig, axs = plt.subplots(figsize=(6, 4))
     
     r2 = r2_score(y_true, y_predicted)
+    r = pearsonr(y_true, y_predicted)[0]
     mse = mean_squared_error(y_true, y_predicted)
     mae = (np.abs(y_true - y_predicted)).mean()
     rmse = np.sqrt(mse)
@@ -119,7 +121,7 @@ def plsr_r2_plot(y_true, y_predicted):
     axs.set_ylabel("HbA1c% predicted")
     
     plt.text(min(y_true), max(y_predicted) + 1, 
-             f"R² = {r2:.3f}\nMAE: {mae:.3f}\nRMSEP = {rmse:.3f}%", 
+             f"R² = {r2:.3f}\nR = {r:.3f}\nMAE: {mae:.3f}\nRMSEP = {rmse:.3f}%\nMSE = {mse:.3f}", 
              verticalalignment='top')    
 
     return fig, axs

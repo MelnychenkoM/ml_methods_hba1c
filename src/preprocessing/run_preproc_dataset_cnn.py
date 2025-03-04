@@ -22,16 +22,16 @@ def main(file_path, domain_path, max_hba1c, region, test_size, random_state):
     discretizer = KBinsDiscretizer(n_bins=8, encode='ordinal', strategy='uniform', random_state=random_state)
     categories = discretizer.fit_transform(y.reshape(-1, 1))
 
-    X_train, X_temp, y_train, y_temp, categories_train, categories_temp = train_test_split(
+    X_temp, X_test, y_temp, y_test, categories_temp, categories_test = train_test_split(
         X, y, categories,
-        test_size=0.4,
+        test_size=0.2,
         stratify=categories,
         random_state=random_state
     )
 
-    X_val, X_test, y_val, y_test = train_test_split(
+    X_train, X_val, y_train, y_val = train_test_split(
         X_temp, y_temp,
-        test_size=0.5,
+        test_size=0.2,
         stratify=categories_temp,
         random_state=random_state
     )

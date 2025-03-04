@@ -11,5 +11,5 @@ data:
   batch_size: 32
 optimizer: null
 lr_scheduler: null
-ckpt_path: checkpoints/best-checkpoint-epoch=152-val_loss=1.44.ckpt
+ckpt_path: checkpoints/last.ckpt
 verbose: true
