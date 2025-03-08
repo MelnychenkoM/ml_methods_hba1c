@@ -216,7 +216,7 @@ class SpectraFit:
         """
         self.x_values = x_values
         self.y_values = y_values
-        self.peaks = [np.argmin(np.abs(self.x_values - peak)) for peak in peaks]
+        self.peaks = np.array([np.argmin(np.abs(self.x_values - peak)) for peak in peaks])
 
         if not self.model_loaded:
             self._create_params(self.x_values, 
@@ -279,7 +279,7 @@ class SpectraFit:
 
         return self.params
 
-    def plot_fit(self, kind='fit', *, bin_num = 200):
+    def plot_fit(self, kind='fit', *, bin_num=200):
         """
         Plot resulting fit/residuals
         """

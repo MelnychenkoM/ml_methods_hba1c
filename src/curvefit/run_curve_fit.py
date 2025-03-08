@@ -21,12 +21,12 @@ SAVGOL_PARAMS = {
     "polyorder": 3
 }
 
-def main(data_path, domain_path, peaks_path, output_dir, fit_sample):
+def main(data_path, domain_path, peaks_path, output_dir, fit_sample, data_dir):
     # PREPROCESSING
-    data_path = os.path.expanduser(data_path)
-    domain_path = os.path.expanduser(domain_path)
-    peaks_path = os.path.expanduser(peaks_path)
-    output_dir = os.path.expanduser(output_dir)
+    data_path = os.path.expanduser(os.path.join(data_dir, data_path))
+    domain_path = os.path.expanduser(os.path.join(data_dir, domain_path))
+    peaks_path = os.path.expanduser(os.path.join(data_dir, peaks_path))
+    output_dir = os.path.expanduser(os.path.join(data_dir, output_dir))
 
     peaks = pd.read_csv(peaks_path).to_numpy().reshape(-1)
 
@@ -59,7 +59,7 @@ def main(data_path, domain_path, peaks_path, output_dir, fit_sample):
     params = {
         "center": {"min": 3, "max": 3},
         "fwhm": {"value": 3},
-        "eta": {"value": 1}
+        "eta": {"value": 0.5}
     }
 
     metadata = {
@@ -109,8 +109,9 @@ if __name__ == '__main__':
     parser.add_argument('--data_path', type=str, required=True, help="Path to the dataset CSV file")
     parser.add_argument('--domain_path', type=str, required=True, help="Path to the domain CSV file")
     parser.add_argument('--peaks_path', type=str, required=True, help="Path to the peaks CSV file")
-    parser.add_argument('--output_dir', type=str, default='~/data/fits/', help="Directory to save fit info")
+    parser.add_argument('--data_dir', type=str, default='~/projects/ml_methods_hba1c/data/', help="Path to the data")
+    parser.add_argument('--output_dir', type=str, default='fits/', help="Directory to save fit info")
     parser.add_argument('--fit_sample', type=int, default=None, help="Number of the sample to fit")
     
     args = parser.parse_args()
-    main(args.data_path, args.domain_path, args.peaks_path, args.output_dir, args.fit_sample)
+    main(args.data_path, args.domain_path, args.peaks_path, args.output_dir, args.fit_sample, args.data_dir)
