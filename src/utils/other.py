@@ -93,6 +93,7 @@ class FitReader:
 
     def dataset_split(self, 
                       dataframe_name='areas', 
+                      normalization=True,
                       bins=8, 
                       test_size=0.2, 
                       target='HbA1c', 
@@ -103,16 +104,16 @@ class FitReader:
             """
 
             data = getattr(self, dataframe_name)
+            y = data[target]
 
             discretizer = KBinsDiscretizer(n_bins=bins, encode='ordinal', strategy='uniform', random_state=random_state)
             categories = discretizer.fit_transform(data[target].values.reshape(-1, 1))
 
-            X = data.drop(columns=['HbA1c', 'Age'])
+            if normalization:
+                X = data.drop(columns=['HbA1c', 'Age'])
+                scaler = StandardScaler()
+                X = pd.DataFrame(scaler.fit_transform(X), columns=X.columns)
 
-            scaler = StandardScaler()
-            X = pd.DataFrame(scaler.fit_transform(X), columns=X.columns)
-
-            y = data[target]
 
             X_train, X_test, y_train, y_test = train_test_split(X, y, 
                                                                 test_size=test_size, 

@@ -101,7 +101,7 @@ class PLSRComponents:
         pred = self._fitted_model.predict(X_test)
         return pred
     
-def validate_plot(y_true, y_predicted):
+def validate_plot(y_true, y_predicted, params={}):
     """
     Plot y true against y predicted
     """
@@ -119,9 +119,16 @@ def validate_plot(y_true, y_predicted):
 
     axs.set_xlabel("HbA1c% measured")
     axs.set_ylabel("HbA1c% predicted")
+
+    y_min = min(y_true)
+    y_max = max(y_predicted) + 1
+
+    if params:
+        x_coord = params['x']
+        y_coord = params['y']
     
-    plt.text(min(y_true), max(y_predicted) + 1, 
-             f"R² = {r2:.3f}\nR = {r:.3f}\nMAE: {mae:.3f}\nRMSEP = {rmse:.3f}%\nMSE = {mse:.3f}", 
+    plt.text(x_coord, y_coord, 
+             f"R² = {r2:.3f}\nR = {r:.3f}\nMAE: {mae:.3f}\nRMSE = {rmse:.3f}\nMSE = {mse:.3f}", 
              verticalalignment='top')    
 
     return fig, axs
