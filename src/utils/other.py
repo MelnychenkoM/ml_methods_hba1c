@@ -104,13 +104,14 @@ class FitReader:
             """
 
             data = getattr(self, dataframe_name)
+
+            X = data.drop(columns=['HbA1c', 'Age'])
             y = data[target]
 
             discretizer = KBinsDiscretizer(n_bins=bins, encode='ordinal', strategy='uniform', random_state=random_state)
             categories = discretizer.fit_transform(data[target].values.reshape(-1, 1))
 
             if normalization:
-                X = data.drop(columns=['HbA1c', 'Age'])
                 scaler = StandardScaler()
                 X = pd.DataFrame(scaler.fit_transform(X), columns=X.columns)
 

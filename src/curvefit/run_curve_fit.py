@@ -9,6 +9,7 @@ from tqdm.auto import tqdm
 from curvefit import SpectraFit
 from dataset import DatasetSpectra
 import matplotlib.pyplot as plt
+import time
 
 
 START = 1000
@@ -77,7 +78,7 @@ def main(data_path, domain_path, peaks_path, output_dir, fit_sample, data_dir):
 
     if not START_INDEX:
         with open(fit_info_path, 'a') as fit_info_file:
-            fit_info_file.write(f"Index\tr2\tDiscrepancy\tHbA1c\tAge\n")
+            fit_info_file.write(f"Index\tr2\tDiscrepancy\tHbA1c\tAge\tTime\n")
 
     total_samples = dataset.n_samples - START_INDEX
 
@@ -87,19 +88,22 @@ def main(data_path, domain_path, peaks_path, output_dir, fit_sample, data_dir):
             model = SpectraFit()
 
             try:
+                start_time = time.time()
                 model.fit(x_values, spectra, peaks, params)
+                end_time = time.time()
+                fit_time = end_time - start_time 
 
                 filename = f"{i}_fit_{hba1c}_{age}.csv"
                 output_path = os.path.join(output_dir, filename)
                 model.params.to_csv(output_path, index=None)
 
                 with open(fit_info_path, 'a') as fit_info_file:
-                    fit_info_file.write(f"{i}\t{model.r2:.5f}\t{model.discrepancy:.5e}\t{hba1c}\t{age}\n")
+                    fit_info_file.write(f"{i}\t{model.r2:.5f}\t{model.discrepancy:.5e}\t{hba1c}\t{age}\t{fit_time:.2f}\n")
 
             except Exception as e:
                 message = f"Error at index {i}: {e}"
                 with open(fit_info_path, 'a') as fit_info_file:
-                    fit_info_file.write(f"{i}\tNone\tNone\tNone\tNone\n")
+                    fit_info_file.write(f"{i}\tNone\tNone\tNone\tNone\tNone\n") 
                 print(message)
 
             pbar.update(1)
