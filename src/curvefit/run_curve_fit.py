@@ -12,14 +12,16 @@ import matplotlib.pyplot as plt
 import time
 
 
-START = 1000
-END = 1720
-MAX_HBA1C = 14
-NORMALIZATION = 'amide'
-START_INDEX = 0
-SAVGOL_PARAMS = {
-    "window_length": 5,
-    "polyorder": 3
+CONFIG = {
+    "START": 1000,
+    "END": 1720,
+    "MAX_HBA1C": 14,
+    "NORMALIZATION": 'amide',
+    "START_INDEX": 0,
+    "SAVGOL_PARAMS": {
+        "window_length": 5,
+        "polyorder": 3
+    }
 }
 
 def main(data_path, domain_path, peaks_path, output_dir, fit_sample, data_dir):
@@ -32,12 +34,11 @@ def main(data_path, domain_path, peaks_path, output_dir, fit_sample, data_dir):
     peaks = pd.read_csv(peaks_path).to_numpy().reshape(-1)
 
     dataset = DatasetSpectra(data_path, domain_path)
-    dataset.select_max_hba1c(MAX_HBA1C)
-    dataset.drop_samples([287, 636])
-    dataset.savgol_filter(**SAVGOL_PARAMS)
+    dataset.select_max_hba1c(CONFIG["MAX_HBA1C"])
+    dataset.savgol_filter(**CONFIG["SAVGOL_PARAMS"])
     dataset.baseline_corr()
-    dataset.normalization(kind=NORMALIZATION)
-    dataset.select_region([START, END])
+    dataset.normalization(kind=CONFIG["NORMALIZATION"])
+    dataset.select_region([CONFIG["START"], CONFIG["END"]])
 
     x_values = dataset.get_wavenumbers()
 
@@ -64,8 +65,8 @@ def main(data_path, domain_path, peaks_path, output_dir, fit_sample, data_dir):
     }
 
     metadata = {
-        "Normalization": NORMALIZATION,
-        "Selected region": f"{START} to {END}",
+        "Normalization": CONFIG["NORMALIZATION"],
+        "Selected region": f"{CONFIG['START']} to {CONFIG['END']}",
         "Peaks": peaks.tolist(),
         "Parameters": params
     }
@@ -76,16 +77,23 @@ def main(data_path, domain_path, peaks_path, output_dir, fit_sample, data_dir):
 
     fit_info_path = os.path.join(output_dir, 'fit_info.txt')
 
-    if not START_INDEX:
+    if not CONFIG["START_INDEX"]:
         with open(fit_info_path, 'a') as fit_info_file:
             fit_info_file.write(f"Index\tr2\tDiscrepancy\tHbA1c\tAge\tTime\n")
 
-    total_samples = dataset.n_samples - START_INDEX
+    total_samples = dataset.n_samples - CONFIG["START_INDEX"]
+
+    spectra = dataset.spectra.mean(axis=0)
+    pmodel = SpectraFit()
+    pmodel.fit(x_values, spectra, peaks, params, ftol=1e-12)
+    pmodel.params.to_csv(os.path.join(output_dir, 'mean_spectra.csv'), index=None)
 
     with tqdm(total=total_samples) as pbar:
-        for i in range(START_INDEX, len(dataset)):
+        for i in range(CONFIG["START_INDEX"], len(dataset)):
             spectra, hba1c, age = dataset[i]
+
             model = SpectraFit()
+            model.load_model(pmodel)
 
             try:
                 start_time = time.time()
@@ -110,10 +118,10 @@ def main(data_path, domain_path, peaks_path, output_dir, fit_sample, data_dir):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Process spectral data.")
+    parser.add_argument('--data_dir', type=str, default='~/projects/ml_methods_hba1c/data/', help="Path to the data")
     parser.add_argument('--data_path', type=str, required=True, help="Path to the dataset CSV file")
     parser.add_argument('--domain_path', type=str, required=True, help="Path to the domain CSV file")
     parser.add_argument('--peaks_path', type=str, required=True, help="Path to the peaks CSV file")
-    parser.add_argument('--data_dir', type=str, default='~/projects/ml_methods_hba1c/data/', help="Path to the data")
     parser.add_argument('--output_dir', type=str, default='fits/', help="Directory to save fit info")
     parser.add_argument('--fit_sample', type=int, default=None, help="Number of the sample to fit")
     

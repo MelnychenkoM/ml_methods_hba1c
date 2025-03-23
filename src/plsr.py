@@ -89,9 +89,9 @@ class PLSRComponents:
 
         return fig, axs
 
-    def evaluate(self, X_test, y_test):
+    def evaluate(self, X_test, y_test, **kwargs):
         y_pred = self._fitted_model.predict(X_test)
-        fig, axs = validate_plot(y_test, y_pred)
+        fig, axs = validate_plot(y_test, y_pred, **kwargs)
         return fig, axs
     
     def get_fitted_model(self):

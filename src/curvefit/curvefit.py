@@ -7,9 +7,6 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.axes_grid1.inset_locator import zoomed_inset_axes
 import plotly.graph_objects as go
 
-import jax
-cpu_device = jax.devices("cpu")[0]
-
 class SpectraFit:
     def __init__(self):
         self.x_values = None
