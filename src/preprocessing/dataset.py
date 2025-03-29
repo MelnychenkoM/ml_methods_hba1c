@@ -54,7 +54,7 @@ class DatasetSpectra:
         Spectra normalization
         """
         if kind == 'amide':
-            self.spectra = self.spectra / self.spectra[:, 500:].max(axis=1, keepdims=True)
+            self.spectra = self.spectra / self.spectra.max(axis=1, keepdims=True)
         elif kind == 'vector':
             norms = np.linalg.norm(self.spectra, axis=1, keepdims=True)
             self.spectra = self.spectra / norms
@@ -103,7 +103,7 @@ class DatasetSpectra:
         self.age = self.age[mask]
         self.n_samples = self.spectra.shape[0]
     
-    def select_min_abs(self, absorbance):
+    def select_max_abs(self, absorbance):
         mask = self.spectra.max(axis=1) >= absorbance
         self._set_mask(mask)
 

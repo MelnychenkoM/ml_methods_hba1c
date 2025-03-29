@@ -51,6 +51,35 @@ class SpectraFit:
             result += amplitude * (eta * gaussian_term + (1 - eta) * lorentzian_term)
 
         return result
+    
+    @staticmethod
+    def combined_pseudo_voigt_height_normalized(x, *params):
+        """ 
+        Pseudo-Voigt profile(s) where 'amplitude' is the peak height.
+        Linear combination of height-normalized Lorenzian and Gaussian.
+        ------------------------------------------------------------
+        Arguments:
+            x : jnp array - Evaluation points
+            params : tuple - voigt profile parameters flattened
+                     (mu_1, gamma_1, amplitude_1, eta_1, mu_2, ...)
+                     mu - center of the distribution,
+                     gamma - FWHM for both gaussian and lorentzian terms,
+                     amplitude - peak height at x = mu,
+                     eta - mixing parameter (1=Gaussian, 0=Lorentzian)
+
+        Returns:
+            jnp array
+        """
+        N = len(params) // 4
+        result = jnp.zeros_like(x)
+        for i in range(N):
+            mu, gamma, amplitude, eta = params[i*4:(i+1)*4]
+
+            gaussian_term = jnp.exp(-4.0 * jnp.log(2.0) * ((x - mu) / gamma)**2)
+            lorentzian_term = (gamma / 2.0)**2 / ((x - mu)**2 + (gamma / 2.0)**2)
+
+            result += amplitude * (eta * gaussian_term + (1.0 - eta) * lorentzian_term)
+        return result
 
     def _create_params(self, x_values, y_values, peaks, param_dict=None):
         """
@@ -132,14 +161,15 @@ class SpectraFit:
             raise ValueError("model has to be an instance of SpectraFit")
         return None
     
-    def load_model_dataframe(self, dataframe, param_dict=None):
+
+    def load_model_dataframe(self, df, param_dict=None):
         """
-        Loads the bounds and initial guess from dataframe of prvious fit, 
+        Loads the bounds and initial guess from dataframe of previous fit, 
         disregarding any parameters provided in param_dict. 
         This function is intended for fitting spectra based on a previous fit.
         ---------------------------------------------------------------------
         Arguments:
-            dataframe - dataframe of fit of 1 spectra
+            df - dataframe of fit of 1 spectra
         """
         default_params = {
             "center": {"min": 5, "max": 5},
@@ -160,31 +190,31 @@ class SpectraFit:
             fit_lower_bound = []
             fit_upper_bound = []
 
-            for i in range(dataframe.shape[0]):
-                wavenumber = dataframe.loc[i, 'wavenumber']
-                amplitude = dataframe.loc[i, 'amplitude']
-                FWHM = dataframe.loc[i, 'FWHM']
-                eta = dataframe.loc[i, 'eta']
+            for idx, row in df.iterrows():
+                wavenumber = row['wavenumber']
+                fwhm = row['FWHM']
+                eta = row['eta']
+                amplitude = row['amplitude'] * fwhm * 0.5
             
                 fit_initial_guess.extend([
-                wavenumber,                               # center
-                FWHM,                                     # FWHM
-                amplitude,                                # A
-                eta                                       # eta (initial guess, can be modified)
+                    wavenumber,                               # center
+                    fwhm,                                     # FWHM
+                    amplitude,                                # A
+                    eta                                       # eta (initial guess, can be modified)
                 ])
                 
                 fit_lower_bound.extend([
-                wavenumber - self.default_params["center"]["min"],   # Lower bound for center
-                default_params["fwhm"]["min"],                  # Lower bound for FWHM
-                default_params["amplitude"]["min"],             # Lower bound for A
-                default_params["eta"]["min"]                    # Lower bound for eta
+                    wavenumber - default_params["center"]["min"],   # Lower bound for center
+                    default_params["fwhm"]["min"],                  # Lower bound for FWHM
+                    default_params["amplitude"]["min"],             # Lower bound for A
+                    default_params["eta"]["min"]                    # Lower bound for eta
                 ])
                 
                 fit_upper_bound.extend([
-                wavenumber + self.default_params["center"]["max"],   # Upper bound for center
-                default_params["fwhm"]["max"],                  # Upper bound for FWHM
-                default_params["amplitude"]["max"],             # Upper bound for A
-                default_params["eta"]["max"]                    # Upper bound for eta
+                    wavenumber + default_params["center"]["max"],   # Upper bound for center
+                    default_params["fwhm"]["max"],                  # Upper bound for FWHM
+                    default_params["amplitude"]["max"],             # Upper bound for A
+                    default_params["eta"]["max"]                    # Upper bound for eta
                 ])
                 
             self.initial_guess = fit_initial_guess
@@ -193,7 +223,7 @@ class SpectraFit:
             self.model_loaded = True
             
         except Exception as e:
-            print(f"The following error occured while loading the model: {e}")
+            print(f"The following error occurred while loading the model: {e}.\nThe model was not loaded.")
 
         return None
 
@@ -240,28 +270,32 @@ class SpectraFit:
         self.discrepancy = np.sqrt(np.mean((self.predicted - self.y_values)**2))
         self.r2 = r2_score(self.y_values, self.predicted)
 
-        areas = []
-        areas_abs = []
         height = []
-
-        y_combined = self.combined_pseudo_voigt(self.x_values, *params_array)
-        total_area = np.trapz(y_combined, x=self.x_values)
+        absolute_component_areas = []
+        relative_areas = []
 
         for i in range(0, len(params_array), 4):
             y_pred = self.combined_pseudo_voigt(self.x_values, *params_array[i:i+4])
             height.append(max(y_pred))
-            areas.append(np.trapz(y_pred / total_area, x=self.x_values))
-            areas_abs.append(np.trapz(y_pred, x=self.x_values))
 
+            abs_area = np.trapz(y_pred, x=self.x_values)
+            absolute_component_areas.append(abs_area)
+
+        total_absolute_area = np.sum(absolute_component_areas)
+
+        if total_absolute_area > 1e-12:
+            for abs_area in absolute_component_areas:
+                relative_areas.append(abs_area / total_absolute_area)
+        else:
+            relative_areas = [0.0] * len(absolute_component_areas)
 
         self.wavenumbers = params_array[::4]
         self.gamma = params_array[1::4]
         self.amplitude = params_array[2::4]
         self.eta = params_array[3::4]
-        self.areas = np.array(areas)
-        self.areas_abs = np.array(areas_abs)
+        self.areas = np.array(relative_areas)
+        self.areas_abs = np.array(absolute_component_areas)
         self.height = np.array(height)
-
         self.wavenumbers_index = [np.argmin(np.abs(self.x_values - peak)) for peak in self.wavenumbers]
 
         self.params = pd.DataFrame({
@@ -271,7 +305,7 @@ class SpectraFit:
             "eta": self.eta,
             "height": self.height,
             "area": self.areas,
-            "area_absolute": areas_abs
+            "area_abs": self.areas_abs
         })
 
         return self.params
@@ -311,8 +345,6 @@ class SpectraFit:
                 #            zorder=3
                 #            )
                     
-                
-
                 ax.set_xlabel('Wavenumbers cm$^{-1}$')
                 ax.set_ylabel('Absorbance')
                 ax.legend()
