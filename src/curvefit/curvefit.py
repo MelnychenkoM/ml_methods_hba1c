@@ -192,9 +192,9 @@ class SpectraFit:
 
             for idx, row in df.iterrows():
                 wavenumber = row['wavenumber']
+                amplitude = row['amplitude']
                 fwhm = row['FWHM']
                 eta = row['eta']
-                amplitude = row['amplitude'] * fwhm * 0.5
             
                 fit_initial_guess.extend([
                     wavenumber,                               # center
@@ -226,9 +226,53 @@ class SpectraFit:
             print(f"The following error occurred while loading the model: {e}.\nThe model was not loaded.")
 
         return None
+    
+
+    def _load_bounds(self, bounds: dict):
+        try:
+            fit_initial_guess = []
+            fit_lower_bound = []
+            fit_upper_bound = []
+
+            for peak in bounds:
+                amplitude = bounds[peak]['amplitude']['value']
+                fwhm = bounds[peak]['fwhm']['value']
+                eta = bounds[peak]['eta']['value']
+            
+                fit_initial_guess.extend([
+                    peak,                              
+                    fwhm,                                    
+                    amplitude,                                
+                    eta                                    
+                ])
+                
+                fit_lower_bound.extend([
+                    bounds[peak]['wavenumber']['min'], # bounds[peak]['wavenumber']['min'],
+                    bounds[peak]["fwhm"]["min"],             
+                    bounds[peak]["amplitude"]["min"],            
+                    bounds[peak]['eta']['min']              
+                ])
+                
+                fit_upper_bound.extend([
+                    bounds[peak]['wavenumber']['max'],  
+                    bounds[peak]["fwhm"]["max"],                  
+                    bounds[peak]["amplitude"]["max"],             
+                    bounds[peak]['eta']['max']
+                ])
+
+            if not self.model_loaded:
+                self.initial_guess = fit_initial_guess
+                self.model_loaded = True
+
+            self.lower_bound = fit_lower_bound
+            self.upper_bound = fit_upper_bound
+            
+        except Exception as e:
+            print(f"The following error occurred while loading the bounds: {e}.\nThe bounds were not loaded.")
+        return None
 
 
-    def fit(self, x_values, y_values, peaks, param_dict=None, **kwargs):
+    def fit(self, x_values, y_values, peaks, param_dict=None, bounds=None, **kwargs):
         """
         Curve fitting using jaxfit.
         -------------------------------------
@@ -245,12 +289,14 @@ class SpectraFit:
         self.y_values = y_values
         self.peaks = np.array([np.argmin(np.abs(self.x_values - peak)) for peak in peaks])
 
-        if not self.model_loaded:
+        if not self.model_loaded and bounds is None:
             self._create_params(self.x_values, 
                                 self.y_values, 
                                 self.peaks,
                                 param_dict=param_dict
                                 )
+        if bounds is not None:
+            self._load_bounds(bounds)
 
         jcf = CurveFit()
 
